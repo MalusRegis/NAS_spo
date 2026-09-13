@@ -42,6 +42,7 @@ def browse_directory(subpath):
         folders = []
         files = []
 
+<<<<<<< HEAD
         for name in sorted(os.listdir(data_path)):
             full_item_path = os.path.join(data_path, name)
             rel_item_path = os.path.relpath(full_item_path, BASE_DIR)
@@ -74,6 +75,10 @@ def browse_directory(subpath):
         "is_file": True,
         "file_type": get_file_type(os.path.basename(data_path))
     })
+=======
+    return jsonify({"filename": filename, "content": content}), file_path
+
+>>>>>>> 2ae917f88ef42548af60c4cc901eeabfb668c0b3
 
 if  __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
