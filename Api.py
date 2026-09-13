@@ -32,3 +32,7 @@ def read_file(filename):
         content = f.read()
 
     return jsonify({"filename": filename, "content": content}), file_path
+
+
+if  __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
