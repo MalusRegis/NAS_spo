@@ -100,5 +100,22 @@ def upload_file(subpath):
         "relative_path": subpath
     }), 201
 
+@app.route('/new_folder/<path:subpath>', methods=['POST'])
+def new_folder(subpath):
+    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
+
+    if not is_safe_path(BASE_DIR, data_path):
+        return jsonify({"error": "Access denied"}), 403
+
+    if not os.path.isdir(os.path.dirname(data_path)):
+        return jsonify({"error": "Parent directory not found"}), 404
+
+    os.makedirs(data_path, exist_ok=True)
+    return jsonify({
+        "message": "Folder created successfully",
+        "created_at": data_path,
+        "relative_path": subpath
+    }), 201
+
 if  __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
