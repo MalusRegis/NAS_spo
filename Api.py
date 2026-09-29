@@ -117,5 +117,33 @@ def new_folder(subpath):
         "relative_path": subpath
     }), 201
 
+@app.route('/delete/<path:subpath>', methods=['DELETE'])
+def delete_item(subpath):
+    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
+
+    if not is_safe_path(BASE_DIR, data_path):
+        return jsonify({"error": "Access denied"}), 403
+
+    if not os.path.exists(data_path):
+        return jsonify({"error": "Path not found"}), 404
+
+    try:
+        if os.path.isdir(data_path):
+            os.rmdir(data_path)
+            message = "Folder deleted successfully"
+        else:
+            os.remove(data_path)
+            message = "File deleted successfully"
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({
+        "message": message,
+        "deleted_at": data_path,
+        "relative_path": subpath
+    }), 200
+
+
+
 if  __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
