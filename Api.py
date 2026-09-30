@@ -148,4 +148,4 @@ def download_file(subpath):
 
 if __name__ == "__main__":
     # Dev only. In production: gunicorn -w 2 -b 0.0.0.0:5000 app:app
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False)
