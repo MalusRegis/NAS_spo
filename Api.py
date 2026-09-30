@@ -1,163 +1,151 @@
-#Api mit der alle datein und Info über de NAS laufen
+#api mit allen funktionen, die der frontend client benötigt. Zugriff nur mit token möglich.
 import os
-from flask import Flask, request, jsonify, send_from_directory
+import hmac
+from flask import Flask, request, jsonify, send_from_directory, abort
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024**3  # 2 GB upload limit
 
-BASE_DIR = '/mnt/raid5/'
+BASE_DIR = os.path.realpath("/mnt/raid5")
+API_TOKEN = os.environ["SPODE_API_TOKEN"]  # set this in the environment
 
-# datentypen kategorisieren um bilder und datein zu unterscheiden
-IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
-DOC_EXTS = {'.pdf', '.docx', '.doc', '.txt'}
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+DOC_EXTS = {".pdf", ".docx", ".doc", ".txt"}
 
-#schaut ob der Pfad innerhalb des Basisverzeichnisses liegt, um unbefugten Zugriff zu verhindern
-def is_safe_path(base_dir, path):
-    abs_base = os.path.abspath(base_dir)
-    abs_target = os.path.abspath(path)
-    return abs_target.startswith(abs_base)
 
-#klassiefiziert  die dateitypen anhand der Dateiendung
+AUTH_ENABLED = os.environ.get("SPODE_AUTH", "1") == "1"
+
+@app.before_request
+def require_token():
+    if not AUTH_ENABLED:
+        return
+    supplied = request.headers.get("Authorization", "")
+    if not hmac.compare_digest(supplied, f"Bearer {os.environ['SPODE_API_TOKEN']}"):
+        abort(401)
+
+def resolve(subpath):
+    """Return the real absolute path, or None if it escapes BASE_DIR."""
+    try:
+        target = os.path.realpath(os.path.join(BASE_DIR, subpath))
+        if os.path.commonpath([BASE_DIR, target]) != BASE_DIR:
+            return None
+    except ValueError:  # null bytes, etc.
+        return None
+    return target
+
+
 def get_file_type(filename):
     ext = os.path.splitext(filename)[1].lower()
     if ext in IMAGE_EXTS:
-        return 'image'
-    elif ext in DOC_EXTS:
-        return 'document'
-    return 'other'
+        return "image"
+    if ext in DOC_EXTS:
+        return "document"
+    return "other"
 
-@app.route('/browse', defaults={'subpath': ''}, methods=['GET'])
-@app.route('/browse/<path:subpath>', methods=['GET'])
+
+@app.route("/browse", defaults={"subpath": ""}, methods=["GET"])
+@app.route("/browse/<path:subpath>", methods=["GET"])
 def browse_directory(subpath):
-    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
-
-    # Security check to ensure subpath stays inside BASE_DIR
-    if not is_safe_path(BASE_DIR, data_path):
+    target = resolve(subpath)
+    if target is None:
         return jsonify({"error": "Access denied"}), 403
-
-    if not os.path.exists(data_path):
+    if not os.path.exists(target):
         return jsonify({"error": "Path not found"}), 404
 
-    # If DataPath is a directory, list all contained folders and files
-    if os.path.isdir(data_path):
-        folders = []
-        files = []
-
-        for name in sorted(os.listdir(data_path)):
-            full_item_path = os.path.join(data_path, name)
-            rel_item_path = os.path.relpath(full_item_path, BASE_DIR)
-
-            if os.path.isdir(full_item_path):
-                folders.append({
-                    "name": name,
-                    "rel_path": rel_item_path,
-                    "is_dir": True
-                })
-            elif os.path.isfile(full_item_path):
-                files.append({
-                    "name": name,
-                    "rel_path": rel_item_path,
-                    "is_dir": False,
-                    "file_type": get_file_type(name),
-                    "extension": os.path.splitext(name)[1].lower()
-                })
-
+    if os.path.isfile(target):
         return jsonify({
-            "DataPath": data_path,
             "relative_path": subpath,
-            "folders": folders,
-            "files": files
+            "is_file": True,
+            "file_type": get_file_type(target),
         })
 
-    # If DataPath points directly to a file
-    return jsonify({
-        "DataPath": data_path,
-        "relative_path": subpath,
-        "is_file": True,
-        "file_type": get_file_type(os.path.basename(data_path))
-    })
-
-@app.route('/upload/<path:subpath>', methods=['POST'])
-def upload_file(subpath):
-    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
-
-    if not is_safe_path(BASE_DIR, data_path):
-        return jsonify({"error": "Access denied"}), 403
-
-    if not os.path.isdir(os.path.dirname(data_path)):
-        return jsonify({"error": "Parent directory not found"}), 404
-
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    file.save(data_path)
-    return jsonify({
-        "message": "File uploaded successfully",
-        "uploaded_to": data_path,
-        "relative_path": subpath
-    }), 201
-
-@app.route('/new_folder/<path:subpath>', methods=['POST'])
-def new_folder(subpath):
-    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
-
-    if not is_safe_path(BASE_DIR, data_path):
-        return jsonify({"error": "Access denied"}), 403
-
-    if not os.path.isdir(os.path.dirname(data_path)):
-        return jsonify({"error": "Parent directory not found"}), 404
-
-    os.makedirs(data_path, exist_ok=True)
-    return jsonify({
-        "message": "Folder created successfully",
-        "created_at": data_path,
-        "relative_path": subpath
-    }), 201
-
-@app.route('/delete/<path:subpath>', methods=['DELETE'])
-def delete_item(subpath):
-    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
-
-    if not is_safe_path(BASE_DIR, data_path):
-        return jsonify({"error": "Access denied"}), 403
-
-    if not os.path.exists(data_path):
-        return jsonify({"error": "Path not found"}), 404
-
+    folders, files = [], []
     try:
-        if os.path.isdir(data_path):
-            os.rmdir(data_path)
-            message = "Folder deleted successfully"
-        else:
-            os.remove(data_path)
-            message = "File deleted successfully"
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        names = sorted(os.listdir(target))
+    except PermissionError:
+        return jsonify({"error": "Permission denied"}), 403
 
-    return jsonify({
-        "message": message,
-        "deleted_at": data_path,
-        "relative_path": subpath
-    }), 200
+    for name in names:
+        full = os.path.join(target, name)
+        rel = os.path.relpath(full, BASE_DIR)
+        if os.path.isdir(full):
+            folders.append({"name": name, "rel_path": rel, "is_dir": True})
+        elif os.path.isfile(full):
+            files.append({
+                "name": name, "rel_path": rel, "is_dir": False,
+                "file_type": get_file_type(name),
+                "extension": os.path.splitext(name)[1].lower(),
+            })
 
-@app.route('/download/<path:subpath>', methods=['GET'])
-def download_file(subpath):
-    data_path = os.path.abspath(os.path.join(BASE_DIR, subpath))
+    return jsonify({"relative_path": subpath, "folders": folders, "files": files})
 
-    if not is_safe_path(BASE_DIR, data_path):
+
+@app.route("/upload/<path:subpath>", methods=["POST"])
+def upload_file(subpath):
+    target = resolve(subpath)
+    if target is None:
         return jsonify({"error": "Access denied"}), 403
+    if not os.path.isdir(os.path.dirname(target)):
+        return jsonify({"error": "Parent directory not found"}), 404
+    if os.path.isdir(target):
+        return jsonify({"error": "Target is a directory"}), 400
+    if os.path.exists(target) and request.args.get("overwrite") != "true":
+        return jsonify({"error": "File exists (use ?overwrite=true)"}), 409
 
-    if not os.path.isfile(data_path):
+    file = request.files.get("file")
+    if file is None or file.filename == "":
+        return jsonify({"error": "No file provided"}), 400
+
+    tmp = target + ".part"
+    file.save(tmp)
+    os.replace(tmp, target)  # atomic
+    return jsonify({"message": "File uploaded", "relative_path": subpath}), 201
+
+
+@app.route("/new_folder/<path:subpath>", methods=["POST"])
+def new_folder(subpath):
+    target = resolve(subpath)
+    if target is None:
+        return jsonify({"error": "Access denied"}), 403
+    if not os.path.isdir(os.path.dirname(target)):
+        return jsonify({"error": "Parent directory not found"}), 404
+    try:
+        os.mkdir(target)
+    except FileExistsError:
+        return jsonify({"error": "Already exists"}), 409
+    return jsonify({"message": "Folder created", "relative_path": subpath}), 201
+
+
+@app.route("/delete/<path:subpath>", methods=["DELETE"])
+def delete_item(subpath):
+    target = resolve(subpath)
+    if target is None or target == BASE_DIR:
+        return jsonify({"error": "Access denied"}), 403
+    if not os.path.exists(target):
+        return jsonify({"error": "Path not found"}), 404
+    try:
+        if os.path.isdir(target):
+            os.rmdir(target)
+        else:
+            os.remove(target)
+    except OSError as e:
+        app.logger.error("Delete failed for %s: %s", target, e)
+        return jsonify({"error": "Could not delete (folder not empty?)"}), 409
+    return jsonify({"message": "Deleted", "relative_path": subpath}), 200
+
+
+@app.route("/download/<path:subpath>", methods=["GET"])
+def download_file(subpath):
+    target = resolve(subpath)
+    if target is None:
+        return jsonify({"error": "Access denied"}), 403
+    if not os.path.isfile(target):
         return jsonify({"error": "File not found"}), 404
+    return send_from_directory(
+        BASE_DIR, os.path.relpath(target, BASE_DIR), as_attachment=True
+    )
 
-    return jsonify({
-        "message": "File sent successfully",
-        "file_path": data_path,
-        "relative_path": subpath
-    }),send_from_directory(BASE_DIR, subpath, as_attachment=True), 200
 
-if  __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    # Dev only. In production: gunicorn -w 2 -b 0.0.0.0:5000 app:app
+    app.run(host="127.0.0.1", port=5000, debug=False)
