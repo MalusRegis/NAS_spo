@@ -15,6 +15,10 @@ DOC_EXTS = {".pdf", ".docx", ".doc", ".txt"}
 
 AUTH_ENABLED = os.environ.get("SPODE_AUTH", "1") == "1"
 
+@app.route("/")
+def index():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
+
 @app.before_request
 def require_token():
     if not AUTH_ENABLED:
