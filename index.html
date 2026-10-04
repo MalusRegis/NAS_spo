@@ -9,15 +9,14 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Spode NAS<small id="conn"></small></h1>
-    <button id="bSet">Settings</button>
+    <button id="bSet">Einstellungen</button>
   </header>
 
   <div class="bar">
-    <nav class="crumbs" id="crumbs" aria-label="Current folder"></nav>
-    <input class="search" id="q" type="search" placeholder="Filter this folder" aria-label="Filter this folder">
-    <button id="bNew">New folder</button>
-    <button id="bUp" class="pri">Upload</button>
+    <nav class="crumbs" id="crumbs" aria-label="Aktueller Ordner"></nav>
+    <input class="search" id="q" type="search" placeholder="Suchen" aria-label="Suchen">
+    <button id="bNew">Neuer Ordner</button>
+    <button id="bUp" class="pri">Hochladen</button>
     <input id="file" type="file" multiple hidden>
   </div>
   <div id="prog"><i></i></div>
@@ -36,18 +35,16 @@
 </div>
 
 <dialog id="dSet">
-  <h2>Connection</h2>
-  <label for="sUrl">Server address (leave empty if this page is served by the API)</label>
-  <input id="sUrl" type="text" placeholder="http://192.168.1.50:5000" autocomplete="off">
-  <label for="sTok">API token (leave empty if login is disabled)</label>
+  <h2>Verbindung</h2>
+  <label for="sTok">API-Token (leer lassen, wenn die Anmeldung deaktiviert ist)</label>
   <input id="sTok" type="password" autocomplete="off">
-  <div class="row"><button id="sCancel">Cancel</button><button id="sSave" class="pri">Save and reload</button></div>
+  <div class="row"><button id="sCancel">Abbrechen</button><button id="sSave" class="pri">Speichern und neu laden</button></div>
 </dialog>
 
 <dialog id="dView">
   <h2 id="vTitle"></h2>
   <div id="view"></div>
-  <div class="row"><button id="vDl">Download</button><button id="vClose" class="pri">Close</button></div>
+  <div class="row"><button id="vDl">Download</button><button id="vClose" class="pri">Schließen</button></div>
 </dialog>
 
 <div id="toast" role="status"></div>

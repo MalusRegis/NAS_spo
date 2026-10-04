@@ -1,21 +1,21 @@
 :root{
-    --bg:#eef1f5;
+    --bg:#d4d5d7;
     --panel:#fff;
-    --ink:#16202e;
+    --ink:#0e131a;
     --dim:#66758a;
     --line:#d9dfe8;
     --acc:#2b59c3;
     --acc-ink:#fff;
     --hover:#f3f6fb;
     --bad:#b42318;
-    --ok:#1d7a46;
+    --ok:#36905d;
     --r:8px;
 }
 @media(prefers-color-scheme:dark)
 {:root:not([data-theme=light])
-    {--bg:#0f1520;
+    {--bg:#e5e6e7;
     --panel:#171f2d;
-    --ink:#e6ebf3;
+    --ink:#e4e5e7;
     --dim:#8796ab;
     --line:#26324a;
     --acc:#6f97ff;
