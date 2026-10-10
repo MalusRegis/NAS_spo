@@ -1,31 +1,34 @@
-#api mit allen funktionen, die der frontend client benötigt. Zugriff nur mit token möglich.
 import os
 import hmac
 from flask import Flask, request, jsonify, send_from_directory, abort
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.realpath("/mnt/raid5")
+
+# Login is on by default. For local development: SPODE_AUTH=0 python api.py
+AUTH_ENABLED = os.environ.get("SPODE_AUTH", "1") == "1"
+API_TOKEN = os.environ.get("SPODE_API_TOKEN", "")
+if AUTH_ENABLED and not API_TOKEN:
+    raise RuntimeError("SPODE_API_TOKEN is not set (or start with SPODE_AUTH=0)")
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024**3  # 2 GB upload limit
-
-BASE_DIR = os.path.realpath("/mnt/raid5")
-API_TOKEN = os.environ["SPODE_API_TOKEN"]  # set this in the environment
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 DOC_EXTS = {".pdf", ".docx", ".doc", ".txt"}
 
+# Endpoints that must work without a token (the page itself and its css/js)
+PUBLIC_ENDPOINTS = {"index", "static"}
 
-AUTH_ENABLED = os.environ.get("SPODE_AUTH", "1") == "1"
-
-@app.route("/")
-def index():
-    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
 @app.before_request
 def require_token():
-    if not AUTH_ENABLED:
+    if not AUTH_ENABLED or request.endpoint in PUBLIC_ENDPOINTS:
         return
     supplied = request.headers.get("Authorization", "")
     if not hmac.compare_digest(supplied, f"Bearer {API_TOKEN}"):
         abort(401)
+
 
 def resolve(subpath):
     """Return the real absolute path, or None if it escapes BASE_DIR."""
@@ -47,6 +50,11 @@ def get_file_type(filename):
     return "other"
 
 
+@app.route("/")
+def index():
+    return send_from_directory(APP_DIR, "index.html")
+
+
 @app.route("/browse", defaults={"subpath": ""}, methods=["GET"])
 @app.route("/browse/<path:subpath>", methods=["GET"])
 def browse_directory(subpath):
@@ -63,12 +71,12 @@ def browse_directory(subpath):
             "file_type": get_file_type(target),
         })
 
-    folders, files = [], []
     try:
         names = sorted(os.listdir(target))
     except PermissionError:
         return jsonify({"error": "Permission denied"}), 403
 
+    folders, files = [], []
     for name in names:
         full = os.path.join(target, name)
         rel = os.path.relpath(full, BASE_DIR)
@@ -151,5 +159,5 @@ def download_file(subpath):
 
 
 if __name__ == "__main__":
-    # Dev only. In production: gunicorn -w 2 -b 0.0.0.0:5000 app:app
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Dev only. Production runs through gunicorn (see the systemd service).
+    app.run(host="127.0.0.1", port=5000, debug=False)
