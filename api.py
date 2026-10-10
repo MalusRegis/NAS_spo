@@ -109,8 +109,15 @@ def upload_file(subpath):
         return jsonify({"error": "No file provided"}), 400
 
     tmp = target + ".part"
-    file.save(tmp)
-    os.replace(tmp, target)  # atomic
+    try:
+        file.save(tmp)
+        os.replace(tmp, target)  # atomic
+    except PermissionError:
+        app.logger.error("upload not permitted: %s", target)
+        return jsonify({"error": "No write permission in this folder"}), 403
+    except OSError as e:
+        app.logger.error("upload failed for %s: %s", target, e)
+        return jsonify({"error": "Upload failed (disk full?)"}), 500
     return jsonify({"message": "File uploaded", "relative_path": subpath}), 201
 
 
@@ -125,6 +132,12 @@ def new_folder(subpath):
         os.mkdir(target)
     except FileExistsError:
         return jsonify({"error": "Already exists"}), 409
+    except PermissionError:
+        app.logger.error("mkdir not permitted: %s", target)
+        return jsonify({"error": "No write permission in this folder"}), 403
+    except OSError as e:
+        app.logger.error("mkdir failed for %s: %s", target, e)
+        return jsonify({"error": "Could not create folder"}), 500
     return jsonify({"message": "Folder created", "relative_path": subpath}), 201
 
 
