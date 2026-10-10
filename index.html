@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Spode NAS</title>
 <link rel="stylesheet" href="static/css/stylesheet.css">
+<script src="static/js/app.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -25,7 +26,7 @@
     <table>
       <thead><tr>
         <th data-k="name">Name</th>
-        <th data-k="type" class="hide-s" style="width:110px">Type</th>
+        <th data-k="type" class="hide-s" style="width:110px">Typ</th>
         <th style="width:190px"></th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -38,13 +39,19 @@
   <h2>Verbindung</h2>
   <label for="sTok">API-Token (leer lassen, wenn die Anmeldung deaktiviert ist)</label>
   <input id="sTok" type="password" autocomplete="off">
-  <div class="row"><button id="sCancel">Abbrechen</button><button id="sSave" class="pri">Speichern und neu laden</button></div>
+  <div class="row">
+    <button id="sCancel">Abbrechen</button>
+    <button id="sSave" class="pri">Speichern und neu laden</button>
+  </div>
 </dialog>
 
 <dialog id="dView">
   <h2 id="vTitle"></h2>
   <div id="view"></div>
-  <div class="row"><button id="vDl">Download</button><button id="vClose" class="pri">Schließen</button></div>
+  <div class="row">
+    <button id="vDl">Download</button>
+    <button id="vClose" class="pri">Schließen</button>
+  </div>
 </dialog>
 
 <div id="toast" role="status"></div>
