@@ -7,7 +7,7 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024**3  # 2 GB upload limit
 
 BASE_DIR = os.path.realpath("/mnt/raid5")
-#API_TOKEN = os.environ["SPODE_API_TOKEN"]  # set this in the environment
+API_TOKEN = os.environ["SPODE_API_TOKEN"]  # set this in the environment
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 DOC_EXTS = {".pdf", ".docx", ".doc", ".txt"}
@@ -24,7 +24,7 @@ def require_token():
     if not AUTH_ENABLED:
         return
     supplied = request.headers.get("Authorization", "")
-    if not hmac.compare_digest(supplied, f"Bearer {os.environ['SPODE_API_TOKEN']}"):
+    if not hmac.compare_digest(supplied, f"Bearer {API_TOKEN}"):
         abort(401)
 
 def resolve(subpath):
