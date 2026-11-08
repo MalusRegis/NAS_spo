@@ -25,8 +25,10 @@ PUBLIC_ENDPOINTS = {"index", "static"}
 def require_token():
     if not AUTH_ENABLED or request.endpoint in PUBLIC_ENDPOINTS:
         return
-    supplied = request.headers.get("Authorization", "")
-    if not hmac.compare_digest(supplied, f"Bearer {API_TOKEN}"):
+    supplied = request.headers.get("Authorization", "").encode("utf-8")
+    expected = f"Bearer {API_TOKEN}".encode("utf-8")
+    # Compare bytes: str comparison raises TypeError on non-ASCII input (-> 500).
+    if not hmac.compare_digest(supplied, expected):
         abort(401)
 
 
