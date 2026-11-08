@@ -5,11 +5,11 @@ from flask import Flask, request, jsonify, send_from_directory, abort
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.realpath("/mnt/raid5")
 
-# Login is on by default. For local development: SPODE_AUTH=0 python api.py
+
 AUTH_ENABLED = os.environ.get("SPODE_AUTH", "1") == "1"
 API_TOKEN = os.environ.get("SPODE_API_TOKEN", "")
 if AUTH_ENABLED and not API_TOKEN:
-    raise RuntimeError("SPODE_API_TOKEN is not set (or start with SPODE_AUTH=0)")
+    raise RuntimeError("SPODE_API_TOKEN is not set")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024**3  # 2 GB upload limit
@@ -172,5 +172,5 @@ def download_file(subpath):
 
 
 if __name__ == "__main__":
-    # Dev only. Production runs through gunicorn (see the systemd service).
+    # Dev only.
     app.run(host="127.0.0.1", port=5000, debug=False)
